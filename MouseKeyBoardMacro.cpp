@@ -1,13 +1,17 @@
+#include <atomic>
+#include <functional>
 #include <iostream>
 #include <minwindef.h>
 #include <string>
 #include <cstring>
 #include <array>
 #include <bit>
+#include <thread>
 #include <vector>
 #include <queue>
 #include <algorithm>
 #include <span>
+#include <winnt.h>
 
 #define WIN32_LEAN_AND_MEAN        
 #include <windows.h>
@@ -229,14 +233,14 @@ class LinkMap {
     };
 
     constexpr static size_t SIZE = 8;
-
+    using VALUETYPE =std::function<void()>;
     using FT = std::pair<std::pair<size_t, size_t>, std::pair<size_t, size_t>>;
 
-    using ET = std::pair<std::span<Input>, std::span<INPUT>>;
+    using ET = std::pair<std::span<Input>, std::span<VALUETYPE>>;
     
 
     std::vector<Input> m_key_source;
-    std::vector<INPUT> m_value_source;
+    std::vector<VALUETYPE> m_value_source;
     
     std::vector<FT> m_firstNodes;
     std::vector<ET> m_nodes;
@@ -244,9 +248,7 @@ class LinkMap {
     BufFix<Input, SIZE> m_keys;
 
 
-    void SendMacro(std::span<INPUT>& item) {
-        SendInput(static_cast<UINT>(item.size()), item.data(), sizeof(INPUT));
-    }
+    
 public:
     LinkMap() : m_value_source(), m_key_source(), m_nodes(), m_keys(), m_firstNodes() {
       
@@ -277,13 +279,13 @@ public:
         return std::span<Input>{item + static_cast<long long>(n.first) , n.second};
     }
 
-    std::span<INPUT> CreateValue(const std::pair<size_t, size_t>& n) {
+    auto CreateValue(const std::pair<size_t, size_t>& n) {
         auto item = m_value_source.begin();
 
-        return std::span<INPUT>{item + static_cast<long long>(n.first), n.second};
+        return std::span<VALUETYPE>{item + static_cast<long long>(n.first), n.second};
     }
 
-    std::pair<size_t, size_t> CreateValue(const std::vector<INPUT>& value)
+    std::pair<size_t, size_t> CreateValue(const std::vector<VALUETYPE>& value)
     {
         auto offset = m_value_source.size();
 
@@ -297,7 +299,7 @@ public:
         return std::make_pair(offset, value.size());
     }
 
-    void Add(const std::vector<Input>& key, const std::vector<INPUT>& value) {
+    void Add(const std::vector<Input>& key, const std::vector<VALUETYPE>& value) {
        
         
 
@@ -322,7 +324,9 @@ public:
          
             if (m_keys.Cmp(node.first)) {
 
-                SendMacro(node.second);
+                for (auto& func : node.second) {
+                    func();
+                }
 
             }
         }
@@ -330,6 +334,10 @@ public:
 
     
 };
+
+void SendMacro(std::vector<INPUT>& item) {
+    SendInput(static_cast<UINT>(item.size()), item.data(), sizeof(INPUT));
+}
 
 auto GetScanCode(VKCode code) {
     auto value = MapVirtualKeyW(static_cast<UINT>(code), MAPVK_VK_TO_VSC);
@@ -372,7 +380,7 @@ INPUT CreateKeyBoardInput(InputFlag flag, VKCode code) {
 }
 
 
-INPUT CreareMouseInput(InputFlag flag, VKCode code) {
+INPUT CreateMouseInput(InputFlag flag, VKCode code) {
 
     MOUSEINPUT mouseInput = {};
 
@@ -515,11 +523,11 @@ void frowRawInput(std::array<char, SIZE>& buffer, LPARAM lParam) {
     }
 }
 
-void AddMouseData(std::vector<Input> key, std::vector<INPUT> value) {
+void AddMouseData(std::vector<Input> key, std::vector<std::function<void()>> value) {
     Info::GetMouseData().Add(key, value);
 }
 
-void AddKeyBoardData(std::vector<Input> key, std::vector<INPUT> value) {
+void AddKeyBoardData(std::vector<Input> key, std::vector<std::function<void()>> value) {
     Info::GetKeyBoardData().Add(key, value);
 }
 
@@ -563,176 +571,102 @@ int Start() {
     return (int)msg.wParam;
 }
 
+volatile std::atomic_int g_flag;
+
+
+void LoopSend(){
+    std::vector<INPUT> n1 = {
+        CreateMouseInput(InputFlag::Down, VKCode::MouseLeft),
+};
+
+std::vector<INPUT> n2 = {
+    CreateMouseInput(InputFlag::Up, VKCode::MouseLeft),
+};
+
+    while (true) {
+        if (g_flag.load(std::memory_order_acquire) == 1) {
+           
+            SendMacro(n1);
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+            SendMacro(n2);
+        }
+        
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+}
+
+void SetOn(){
+    g_flag.store(1, std::memory_order_relaxed);
+}
+
+void SetOff(){
+    g_flag.store(0, std::memory_order_relaxed);
+}
+
 
 int main() {
     
-    auto n1 = {
-            CreateKeyBoardInput(InputFlag::Down, VKCode::N1),
-            CreateKeyBoardInput(InputFlag::Up, VKCode::N1),
-    };
+    SetOff();
 
-    auto n2 = {
-            CreateKeyBoardInput(InputFlag::Down, VKCode::N2),
-            CreateKeyBoardInput(InputFlag::Up, VKCode::N2),
-    };
+    std::thread t(LoopSend);
 
-    AddMouseData({
-        Input{InputFlag::Up, VKCode::MouseLeft},
-        Input{InputFlag::Down, VKCode::MouseRight},
-        },
-        n1
-        );
+    bool flag = false;
+    bool k_flag_1 = false;
 
-    AddMouseData({
-        Input{InputFlag::Up, VKCode::MouseLeft},
-        Input{InputFlag::Down, VKCode::MouseRight},
-        Input{InputFlag::Up, VKCode::MouseRight},
-        },
-        n1
-        );
-
-    AddMouseData({
-        Input{InputFlag::Up, VKCode::MouseLeft},
-        Input{InputFlag::Up, VKCode::MouseRight},
-        },
-        n1
-        );
-
-    AddMouseData({
-        Input{InputFlag::Up, VKCode::MouseLeft},
-        Input{InputFlag::Up, VKCode::MouseRight},
-        Input{InputFlag::Down, VKCode::MouseRight},
-        },
-        n1
-        );
-
-    AddMouseData({
-        Input{InputFlag::Up, VKCode::MouseLeft},
-        Input{InputFlag::Down, VKCode::MouseRight},
-        Input{InputFlag::Up, VKCode::MouseRight},
-        Input{InputFlag::Down, VKCode::MouseRight},
-        Input{InputFlag::Up, VKCode::MouseRight},
-        },
-        n1
-        );
-
-    AddMouseData({
-        Input{InputFlag::Up, VKCode::MouseRight},
-        Input{InputFlag::Down, VKCode::MouseLeft},
-        Input{InputFlag::Up, VKCode::MouseLeft},
-        },
-        n2);
-
-    AddMouseData({
-       Input{InputFlag::Down, VKCode::MouseRight},
-       Input{InputFlag::Down, VKCode::MouseLeft},
-       Input{InputFlag::Up, VKCode::MouseLeft},
-        },
-        n2);
-
-    AddMouseData({
+    std::function<void()> end = [&flag, &k_flag_1]() {
         
-        Input{InputFlag::Down, VKCode::MouseLeft},
-        Input{InputFlag::Up, VKCode::MouseRight},
-        Input{InputFlag::Up, VKCode::MouseLeft},
-        },
-        n2);
+        if(flag){
+            flag = false;
+            Print("end");
+        }
+        else{
+            flag = true;
+            Print("start");
+           
+        }
 
-    AddMouseData({
-
-        Input{InputFlag::Down, VKCode::MouseLeft},        
-        Input{InputFlag::Up, VKCode::MouseLeft},
-        Input{InputFlag::Up, VKCode::MouseRight},
-        },
-        n2);
-
-    AddMouseData({
-        Input{InputFlag::Down, VKCode::MouseMiddle},
-        },
-        {
-            CreateKeyBoardInput(InputFlag::Down, VKCode::H),
-            CreateKeyBoardInput(InputFlag::Up, VKCode::H),
-            
-        });
-
-    AddMouseData({
-       Input{InputFlag::Up, VKCode::MouseMiddle},
-        },
-        {
-            CreateKeyBoardInput(InputFlag::Down, VKCode::H),
-            CreateKeyBoardInput(InputFlag::Up, VKCode::H),
-            CreateKeyBoardInput(InputFlag::Down, VKCode::C),
-            CreateKeyBoardInput(InputFlag::Up, VKCode::C),
-            CreateKeyBoardInput(InputFlag::Down, VKCode::H),
-            CreateKeyBoardInput(InputFlag::Up, VKCode::H),
-        });
-
-    
-    AddMouseData({
-        Input{InputFlag::Down, VKCode::MouseMiddle},
-        Input{InputFlag::Down, VKCode::MouseLeft},
-        },
-        {
-            CreateKeyBoardInput(InputFlag::Down, VKCode::R),
-            CreateKeyBoardInput(InputFlag::Up, VKCode::R),
-        });
-
-
-
-    auto down = {
-        CreateKeyBoardInput(InputFlag::Down, VKCode::P),
-        CreateKeyBoardInput(InputFlag::Down, VKCode::C),
+        if(flag && k_flag_1){
+            SetOn();
+        }
+        else{
+            SetOff();
+        }
+   
+        
     };
 
-    auto up = {
-        CreateKeyBoardInput(InputFlag::Up, VKCode::C),
-        CreateKeyBoardInput(InputFlag::Up, VKCode::P),   
+
+    std::function<void()> kstart = [&k_flag_1]() {
+        Print("kstart");
+         k_flag_1 = true;
+        
     };
 
-    AddKeyBoardData({
+    std::function<void()> kend = [&k_flag_1]() {
+        Print("kend");
+         k_flag_1 = false;
+        
+         SetOff();
+    };
 
-        Input{InputFlag::Down, VKCode::ArrayUp},
-        Input{InputFlag::Up, VKCode::ArrayUp},
-        Input{InputFlag::Down, VKCode::ArrayUp},
-       
-        },
-        down);
 
-    AddKeyBoardData({
-
-       Input{InputFlag::Down, VKCode::ArrayUp},
-       Input{InputFlag::Down, VKCode::ArrayUp},
-       Input{InputFlag::Up, VKCode::ArrayUp},
-
-        },
-        up);
-
+        AddMouseData({
+            Input{InputFlag::Up, VKCode::MouseRight},
+            },
+            {end}
+            );
 
     AddKeyBoardData({
-
-      Input{InputFlag::Down, VKCode::ArrayDown},
-      Input{InputFlag::Up, VKCode::ArrayDown},
-
-        },
-        up);
+            Input{InputFlag::Up, VKCode::G},
+    }, {kstart});
 
     AddKeyBoardData({
-
-      Input{InputFlag::Down, VKCode::ArrayLeft},
-      Input{InputFlag::Up, VKCode::ArrayLeft},
-
-        },
-        up);
-
-    AddKeyBoardData({
-
-      Input{InputFlag::Down, VKCode::ArrayRight},
-      Input{InputFlag::Up, VKCode::ArrayRight},
-
-        },
-        up);
-
-
+        Input{InputFlag::Up, VKCode::H},
+}, {kend});
     
     return Start();
 }
