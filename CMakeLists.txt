@@ -25,7 +25,7 @@ function(my_set_common_properties target)
         -Wconversion
         -Werror
         -Wextra
-        -fconcepts
+        #-fconcepts
     )
 
     target_link_options(${target} PUBLIC
@@ -33,6 +33,7 @@ function(my_set_common_properties target)
    
     target_include_directories(${target} PUBLIC
         ${MY_DIR_PATH}/include
+        ${MY_DIR_PATH}/../../CppHttpFileServer/include
     )
 
     target_link_directories(${target} PUBLIC

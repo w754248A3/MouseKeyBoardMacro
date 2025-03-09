@@ -1,5 +1,7 @@
 #include <iostream>
+#include <minwindef.h>
 #include <string>
+#include <cstring>
 #include <array>
 #include <bit>
 #include <vector>
@@ -10,7 +12,7 @@
 #define WIN32_LEAN_AND_MEAN        
 #include <windows.h>
 
-#include "../../../include/leikaifeng.h"
+#include "leikaifeng.h"
 
 class CreateWindowHandle {
 
@@ -213,7 +215,7 @@ class LinkMap {
             }
         }
 
-        //必须保证std::vector的长度小于SIZE
+        
         bool Cmp(std::span<Input>& value) {
 
             auto data = value.data();
@@ -272,13 +274,13 @@ public:
     std::span<Input> CreateKey(const std::pair<size_t, size_t>& n) {
         auto item = m_key_source.begin();
 
-        return std::span<Input>{item + n.first, n.second};
+        return std::span<Input>{item + static_cast<long long>(n.first) , n.second};
     }
 
     std::span<INPUT> CreateValue(const std::pair<size_t, size_t>& n) {
         auto item = m_value_source.begin();
 
-        return std::span<INPUT>{item + n.first, n.second};
+        return std::span<INPUT>{item + static_cast<long long>(n.first), n.second};
     }
 
     std::pair<size_t, size_t> CreateValue(const std::vector<INPUT>& value)
@@ -334,10 +336,10 @@ auto GetScanCode(VKCode code) {
 
     if (value == 0) {
         Exit("get scan code error");
+ 
     }
-    else {
-        return value;
-    }
+  
+    return value;
 }
 
 
@@ -494,7 +496,7 @@ void frowRawInput(std::array<char, SIZE>& buffer, LPARAM lParam) {
 
     UINT dwSize = SIZE;
 
-    if (-1 == GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, buffer.data(), &dwSize, sizeof(RAWINPUTHEADER))) {
+    if (static_cast<UINT>(-1) == GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, buffer.data(), &dwSize, sizeof(RAWINPUTHEADER))) {
         Exit("get raw input data error");
     }
    
@@ -534,8 +536,8 @@ int Start() {
 
     CreateKeyboardRawInput(window.GetHandle());
 
-
-    std::array<char, 1024> buffer{};
+    constexpr UINT SIZE = 1024;
+    std::array<char, SIZE> buffer{};
 
     MSG msg;
 
@@ -543,7 +545,7 @@ int Start() {
     {
         if (msg.message == WM_INPUT) {
 
-            frowRawInput(buffer, msg.lParam);
+            frowRawInput<SIZE>(buffer, msg.lParam);
 
             if (GET_RAWINPUT_CODE_WPARAM(msg.wParam) == RIM_INPUT) {
                 DispatchMessage(&msg);
