@@ -60,10 +60,10 @@ function(my_set_target_out targetname)
 endfunction()
 
 
-add_executable(MouseKeyBoardMacro ./MouseKeyBoardMacro.cpp)
+add_executable(qk ./qk.cpp)
 
 
-my_set_common_properties(MouseKeyBoardMacro)
+my_set_common_properties(qk)
 
 
-my_set_target_out(MouseKeyBoardMacro)
+my_set_target_out(qk)
