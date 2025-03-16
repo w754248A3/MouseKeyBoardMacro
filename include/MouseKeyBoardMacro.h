@@ -247,7 +247,7 @@ class LinkMap {
         }
     };
 
-    constexpr static size_t SIZE = 8;
+    constexpr static size_t SIZE = 16;
     using VALUETYPE =std::function<void()>;
     using FT = std::pair<std::pair<size_t, size_t>, std::pair<size_t, size_t>>;
 
