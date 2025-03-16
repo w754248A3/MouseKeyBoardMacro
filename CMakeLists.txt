@@ -67,3 +67,12 @@ my_set_common_properties(qk)
 
 
 my_set_target_out(qk)
+
+
+add_executable(ArrayToWSAD ./ArrayToWSAD.cpp)
+
+
+my_set_common_properties(ArrayToWSAD)
+
+
+my_set_target_out(ArrayToWSAD)

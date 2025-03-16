@@ -1,3 +1,7 @@
+#pragma once
+#ifndef _MOUSEKEYBOARDMACRO
+#define _MOUSEKEYBOARDMACRO
+
 #include <atomic>
 #include <functional>
 #include <iostream>
@@ -147,6 +151,17 @@ enum class VKCode : unsigned char {
     N1 = 49,
 
     N2 = 50,
+
+
+    W = 0x57,
+    S = 0x53,
+    A = 0x41,
+    D = 0x44,
+
+
+    Alt = VK_MENU,
+
+    LeftAlt = VK_LMENU,
 };
 
 
@@ -531,6 +546,24 @@ void AddKeyBoardData(std::vector<Input> key, std::vector<std::function<void()>> 
     Info::GetKeyBoardData().Add(key, value);
 }
 
+void AddKeyBoardData(std::vector<Input> key, std::vector<INPUT> value) {
+
+    std::function<void()> func = [value=value] ()mutable {
+        SendMacro(value);
+    };
+
+    Info::GetKeyBoardData().Add(key, {func});
+}
+
+void AddMouseData(std::vector<Input> key, std::vector<INPUT> value) {
+
+    std::function<void()> func = [value=value] ()mutable {
+        SendMacro(value);
+    };
+
+    Info::GetMouseData().Add(key, {func});
+}
+
 int Start() {
 
     Info::GetKeyBoardData().Complete();
@@ -570,3 +603,6 @@ int Start() {
 
     return (int)msg.wParam;
 }
+
+
+#endif
