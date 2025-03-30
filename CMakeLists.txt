@@ -76,3 +76,13 @@ my_set_common_properties(ArrayToWSAD)
 
 
 my_set_target_out(ArrayToWSAD)
+
+
+
+add_executable(fshxj ./fshxj.cpp)
+
+
+my_set_common_properties(fshxj)
+
+
+my_set_target_out(fshxj)

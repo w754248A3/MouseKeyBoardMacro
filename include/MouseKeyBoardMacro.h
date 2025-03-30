@@ -1,4 +1,5 @@
 #pragma once
+#include <errhandlingapi.h>
 #ifndef _MOUSEKEYBOARDMACRO
 #define _MOUSEKEYBOARDMACRO
 
@@ -129,6 +130,10 @@ enum class VKCode : unsigned char {
     R = 0x52,
 
     G = 0x47,
+
+    Z = 0x5A,
+
+    X = 0x58,
 
     RightShift = VK_RSHIFT,
     
@@ -351,7 +356,14 @@ public:
 };
 
 void SendMacro(std::vector<INPUT>& item) {
-    SendInput(static_cast<UINT>(item.size()), item.data(), sizeof(INPUT));
+    
+    auto res = SendInput(static_cast<UINT>(item.size()), item.data(), sizeof(INPUT));
+
+    auto err = GetLastError();
+
+    if(res ==0){
+        Print("send input error", GetWin32ErrorMessage(err));
+    }
 }
 
 auto GetScanCode(VKCode code) {
@@ -407,6 +419,18 @@ INPUT CreateMouseInput(InputFlag flag, VKCode code) {
         else {
             mouseInput.dwFlags = MOUSEEVENTF_LEFTUP;
         }
+    }
+    else if (code == VKCode::MouseRight){
+        if (flag == InputFlag::Down)
+        {
+            mouseInput.dwFlags = MOUSEEVENTF_RIGHTDOWN;
+        }
+        else {
+            mouseInput.dwFlags = MOUSEEVENTF_RIGHTUP;
+        }
+    }
+    else{
+        Exit("other mouse code can not write");
     }
 
     INPUT input = {};
