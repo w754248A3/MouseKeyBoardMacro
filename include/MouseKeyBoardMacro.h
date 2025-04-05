@@ -163,7 +163,8 @@ enum class VKCode : unsigned char {
     A = 0x41,
     D = 0x44,
 
-
+    J = 0x4A,
+    K = 0x4B,
     Alt = VK_MENU,
 
     LeftAlt = VK_LMENU,

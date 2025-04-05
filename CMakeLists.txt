@@ -69,20 +69,11 @@ my_set_common_properties(qk)
 my_set_target_out(qk)
 
 
-add_executable(ArrayToWSAD ./ArrayToWSAD.cpp)
+
+add_executable(fromJsonSetting ./fromJsonSetting.cpp)
 
 
-my_set_common_properties(ArrayToWSAD)
+my_set_common_properties(fromJsonSetting)
 
 
-my_set_target_out(ArrayToWSAD)
-
-
-
-add_executable(fshxj ./fshxj.cpp)
-
-
-my_set_common_properties(fshxj)
-
-
-my_set_target_out(fshxj)
+my_set_target_out(fromJsonSetting)
