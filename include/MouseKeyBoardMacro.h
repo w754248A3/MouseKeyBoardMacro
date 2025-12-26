@@ -209,7 +209,7 @@ public:
 
 
 class MyMacro {
-    using ITEM = std::vector<std::function<void()>>;
+    using ITEM = std::function<void()>;
     using VS =std::vector<ITEM>;
     
     VS m_vs;
@@ -218,7 +218,7 @@ class MyMacro {
 
 public:
 
-    void Add(const std::vector<Input>& key, const ITEM& value) {
+    void Add(const std::vector<Input>& key, ITEM value) {
 
         std::vector<uint32_t> b;
         b.reserve(key.size());
@@ -247,12 +247,10 @@ public:
 
         for (auto& index :index_vs) {
          
-            const auto& vs = m_vs[index];
+            const auto& f = m_vs[index];
 
-            for (auto& f :vs) {
-         
             f();
-        }
+        
         }
     }
 
@@ -466,11 +464,11 @@ void frowRawInput(std::array<char, SIZE>& buffer, LPARAM lParam) {
     }
 }
 
-void AddMouseData(std::vector<Input> key, std::vector<std::function<void()>> value) {
+void AddMouseData(std::vector<Input> key, std::function<void()> value) {
     Info::GetMouseData().Add(key, value);
 }
 
-void AddKeyBoardData(std::vector<Input> key, std::vector<std::function<void()>> value) {
+void AddKeyBoardData(std::vector<Input> key, std::function<void()> value) {
     Info::GetKeyBoardData().Add(key, value);
 }
 
@@ -480,7 +478,7 @@ void AddKeyBoardData(std::vector<Input> key, std::vector<INPUT> value) {
         SendMacro(value);
     };
 
-    Info::GetKeyBoardData().Add(key, {func});
+    Info::GetKeyBoardData().Add(key, func);
 }
 
 void AddMouseData(std::vector<Input> key, std::vector<INPUT> value) {
@@ -489,7 +487,7 @@ void AddMouseData(std::vector<Input> key, std::vector<INPUT> value) {
         SendMacro(value);
     };
 
-    Info::GetMouseData().Add(key, {func});
+    Info::GetMouseData().Add(key, func);
 }
 
 int Start() {
