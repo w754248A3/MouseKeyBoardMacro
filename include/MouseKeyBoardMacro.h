@@ -1,5 +1,5 @@
 #pragma once
-#include <errhandlingapi.h>
+
 #ifndef _MOUSEKEYBOARDMACRO
 #define _MOUSEKEYBOARDMACRO
 
@@ -22,6 +22,9 @@
 #include <windows.h>
 
 #include "leikaifeng.h"
+#include "AcAuto.h"
+#include <cstdint>
+#include <errhandlingapi.h>
 
 class CreateWindowHandle {
 
@@ -204,157 +207,57 @@ public:
     }
 };
 
-class LinkMap {
 
+class MyMacro {
+    using ITEM = std::vector<std::function<void()>>;
+    using VS =std::vector<ITEM>;
     
-    template <typename T, size_t SIZE>
-    requires(std::is_default_constructible_v<T>&& std::is_trivially_copy_assignable_v<T>&& SIZE != 0)
-        class BufFix {
+    VS m_vs;
 
-        constexpr static size_t LENGTH = SIZE * 4;
+    ACAutomaton m_aam;
 
-        constexpr static size_t ONE_BLACK_BYTES_SIZE = sizeof(T) * SIZE;
-
-        constexpr static size_t MOVE_LENGTH = LENGTH - SIZE;
-
-        T m_buffer[LENGTH];
-
-        size_t m_index;
-
-    public:
-        BufFix() : m_buffer(), m_index(MOVE_LENGTH) {}
-
-        void Add(T value) {
-
-            m_index--;
-            m_buffer[m_index] = value;
-           
-            if (m_index == 0) {
-
-                std::memcpy(m_buffer + MOVE_LENGTH, m_buffer, ONE_BLACK_BYTES_SIZE);
-
-                m_index = MOVE_LENGTH;
-            }
-            else {
-                
-            }
-        }
-
-        
-        bool Cmp(std::span<Input>& value) {
-
-            auto data = value.data();
-
-            auto data_bytes_size = value.size() * sizeof(T);
-
-            auto buffer = reinterpret_cast<char*>(&m_buffer[m_index]);
-
-            return 0 == std::memcmp(buffer, data, data_bytes_size);
-        }
-    };
-
-    constexpr static size_t SIZE = 16;
-    using VALUETYPE =std::function<void()>;
-    using FT = std::pair<std::pair<size_t, size_t>, std::pair<size_t, size_t>>;
-
-    using ET = std::pair<std::span<Input>, std::span<VALUETYPE>>;
-    
-
-    std::vector<Input> m_key_source;
-    std::vector<VALUETYPE> m_value_source;
-    
-    std::vector<FT> m_firstNodes;
-    std::vector<ET> m_nodes;
-
-    BufFix<Input, SIZE> m_keys;
-
-
-    
 public:
-    LinkMap() : m_value_source(), m_key_source(), m_nodes(), m_keys(), m_firstNodes() {
-      
-    }
 
-    std::pair<size_t, size_t> CreateKey(const std::vector<Input>& key)
-    {
-        if (key.size() > SIZE) {
-            Exit("key item too long");
-        }
+    void Add(const std::vector<Input>& key, const ITEM& value) {
 
+        std::vector<uint32_t> b;
+        b.reserve(key.size());
 
-        auto offset = m_key_source.size();
+        std::ranges::transform(key, std::back_inserter(b),
+            [](auto x) {
+                return x.GetValue();
+            }
+        );
 
-        for (auto item = key.crbegin(); item != key.crend(); item++)
-        {
+        auto id = static_cast<uint32_t>(m_vs.size());
+        m_vs.push_back(value);
 
-
-            m_key_source.push_back(*item);
-        }
-
-        return std::make_pair(offset, key.size()); 
-    }
-
-    std::span<Input> CreateKey(const std::pair<size_t, size_t>& n) {
-        auto item = m_key_source.begin();
-
-        return std::span<Input>{item + static_cast<long long>(n.first) , n.second};
-    }
-
-    auto CreateValue(const std::pair<size_t, size_t>& n) {
-        auto item = m_value_source.begin();
-
-        return std::span<VALUETYPE>{item + static_cast<long long>(n.first), n.second};
-    }
-
-    std::pair<size_t, size_t> CreateValue(const std::vector<VALUETYPE>& value)
-    {
-        auto offset = m_value_source.size();
-
-        for (auto& item : value)
-        {
-
-
-            m_value_source.push_back(item);
-        }
-
-        return std::make_pair(offset, value.size());
-    }
-
-    void Add(const std::vector<Input>& key, const std::vector<VALUETYPE>& value) {
-       
         
-
-        m_firstNodes.push_back(std::make_pair(CreateKey(key), CreateValue(value)));
-
-
+        m_aam.insert(b, id);
     }
 
     void Complete() {
-        for (auto& item : m_firstNodes)
-        {
-            m_nodes.push_back(std::make_pair(CreateKey(item.first), CreateValue(item.second)));
-        }
+        m_aam.build();
     }
 
     void Send(Input key) {
 
-        m_keys.Add(key);
+        const auto& index_vs = m_aam.search_step(key.GetValue());
 
 
-        for (auto& node : m_nodes) {
+        for (auto& index :index_vs) {
          
-            if (m_keys.Cmp(node.first)) {
+            const auto& vs = m_vs[index];
 
-                for (auto& func : node.second) {
-                    func();
-                }
-
-            }
+            for (auto& f :vs) {
+         
+            f();
+        }
         }
     }
 
-    
 };
+
 
 void SendMacro(std::vector<INPUT>& item) {
     
@@ -448,12 +351,12 @@ class Info {
 
 public:
     static auto& GetMouseData() {
-        static LinkMap data{};
+        static MyMacro data{};
         return data;
     }
 
     static auto& GetKeyBoardData() {
-        static LinkMap data{};
+        static MyMacro data{};
 
         return data;
     }

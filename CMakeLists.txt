@@ -77,3 +77,13 @@ my_set_common_properties(fromJsonSetting)
 
 
 my_set_target_out(fromJsonSetting)
+
+
+
+add_executable(test ./test.cpp)
+
+
+my_set_common_properties(test)
+
+
+my_set_target_out(test)
